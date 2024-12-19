@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="chat-header">
+        <h2>Чат с {{ receiver.username }}</h2>
+    </div>
+    
+    <div class="messages-container" id="messages">
+        {% for message in messages %}
+            <div class="message {% if message.sender == request.user %}sent{% else %}received{% endif %}">
+                {% if message.image %}
+                    <img src="{{ message.image.url }}" alt="Изображение" class="message-image">
+                {% endif %}
+                {% if message.content %}
+                    <p>{{ message.content }}</p>
+                {% endif %}
+                <span class="timestamp">{{ message.timestamp|date:"H:i" }}</span>
+            </div>
+        {% endfor %}
+    </div>
+    
+    <form id="message-form" class="message-form">
+        {% csrf_token %}
+        <input type="text" id="message-content" placeholder="Введите сообщение...">
+        <label for="message-image">📎</label>
+        <input type="file" id="message-image" accept="image/*">
+        <button type="submit">Отправить</button>
+    </form>
+</div>
+
+<script>
+document.getElementById('message-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    formData.append('receiver_id', '{{ receiver.id }}');
+    formData.append('content', document.getElementById('message-content').value);
+    
+    const imageFile = document.getElementById('message-image').files[0];
+    if (imageFile) {
+        formData.append('image', imageFile);
+    }
+    
+    fetch('{% url "send_message" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            document.getElementById('message-content').value = '';
+            document.getElementById('message-image').value = '';
+            // Обновить чат
+            location.reload();
+        }
+    });
+});
+</script>
+{% endblock %} 
